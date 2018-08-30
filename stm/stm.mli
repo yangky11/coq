@@ -10,6 +10,11 @@
 
 open Names
 
+
+module ShowScript : sig
+  val get_script_pp :  Names.Id.t option -> Pp.t
+end
+
 (** state-transaction-machine interface *)
 
 (* Flags *)

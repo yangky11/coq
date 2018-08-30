@@ -29,7 +29,7 @@ open Util
 (** Representation and operations on identifiers. *)
 module Id :
 sig
-  type t
+  type t = string
   (** Values of this type represent (Coq) identifiers. *)
 
   val equal : t -> t -> bool
@@ -124,7 +124,7 @@ module ModIdmap : Map.ExtS with type key = module_ident and module Set := ModIds
 
 module DirPath :
 sig
-  type t
+  type t = module_ident list
   (** Type of directory paths. Essentially a list of module identifiers. The
       order is reversed to improve sharing. E.g. A.B.C is ["C";"B";"A"] *)
 
@@ -165,7 +165,7 @@ end
 
 module Label :
 sig
-  type t
+  type t = Id.t
   (** Type of labels *)
 
   val equal : t -> t -> bool
@@ -203,7 +203,7 @@ end
 
 module MBId :
 sig
-  type t
+  type t = int * Id.t * DirPath.t
   (** Unique names for bound modules. Each call to [make] constructs a fresh
       unique identifier. *)
 
@@ -271,7 +271,14 @@ module MPmap : Map.ExtS with type key = ModPath.t and module Set := MPset
 
 module KerName :
 sig
-  type t
+  type t = {
+    canary : Canary.t;
+    modpath : ModPath.t;
+    dirpath : DirPath.t;
+    knlabel : Label.t;
+    mutable refhash : int;
+    (** Lazily computed hash. If unset, it is set to negative values. *)
+  }
 
   (** Constructor and destructor *)
   val make : ModPath.t -> DirPath.t -> Label.t -> t
@@ -302,9 +309,11 @@ module KNmap  : Map.ExtS with type key = KerName.t and module Set := KNset
 
 (** {6 Constant Names } *)
 
-module Constant:
+module KerPair:
 sig
-  type t
+  type t =
+    | Same of KerName.t (** user = canonical *)
+    | Dual of KerName.t * KerName.t (** user then canonical *)
 
   (** Constructors *)
 
@@ -372,6 +381,8 @@ sig
 
 end
 
+module Constant = KerPair
+
 (** The [*_env] modules consider an order on user part of names
    the others consider an order on canonical part of names*)
 module Cpred : Predicate.S with type elt = Constant.t
@@ -387,72 +398,7 @@ module Cmap_env : Map.ExtS with type key = Constant.t and module Set := Cset_env
     Keys are ordered wrt. "user form" of the constant. *)
 
 (** {6 Inductive names} *)
-
-module MutInd :
-sig
-  type t
-
-  (** Constructors *)
-
-  val make : KerName.t -> KerName.t -> t
-  (** Builds a mutual inductive name from a user and a canonical kernel name. *)
-
-  val make1 : KerName.t -> t
-  (** Special case of [make] where the user name is canonical.  *)
-
-  val make2 : ModPath.t -> Label.t -> t
-  (** Shortcut for [(make1 (KerName.make2 ...))] *)
-
-  val make3 : ModPath.t -> DirPath.t -> Label.t -> t
-  (** Shortcut for [(make1 (KerName.make ...))] *)
-
-  (** Projections *)
-
-  val user : t -> KerName.t
-  val canonical : t -> KerName.t
-
-  val repr3 : t -> ModPath.t * DirPath.t * Label.t
-  (** Shortcut for [KerName.repr (user ...)] *)
-
-  val modpath : t -> ModPath.t
-  (** Shortcut for [KerName.modpath (user ...)] *)
-
-  val label : t -> Label.t
-  (** Shortcut for [KerName.label (user ...)] *)
-
-  (** Comparisons *)
-
-  module CanOrd : sig
-    val compare : t -> t -> int
-    val equal : t -> t -> bool
-    val hash : t -> int
-  end
-
-  module UserOrd : sig
-    val compare : t -> t -> int
-    val equal : t -> t -> bool
-    val hash : t -> int
-  end
-
-  module SyntacticOrd : sig
-    val compare : t -> t -> int
-    val equal : t -> t -> bool
-    val hash : t -> int
-  end
-
-  val equal : t -> t -> bool
-  (** Default comparison, alias for [CanOrd.equal] *)
-
-  val hash : t -> int
-
-  (** Displaying *)
-
-  val to_string : t -> string
-  val print : t -> Pp.t
-  val debug_to_string : t -> string
-  val debug_print : t -> Pp.t
-
-end
+module MutInd = KerPair
 
 module Mindset : CSig.SetS with type elt = MutInd.t
 module Mindmap : Map.ExtS with type key = MutInd.t and module Set := Mindset

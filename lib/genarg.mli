@@ -48,7 +48,8 @@ phantom argument.
 
 module ArgT :
 sig
-  type ('a, 'b, 'c) tag
+  module DYN : Dyn.S
+  type ('a, 'b, 'c) tag = ('a * 'b * 'c) DYN.tag
   val eq : ('a1, 'b1, 'c1) tag -> ('a2, 'b2, 'c2) tag -> ('a1 * 'b1 * 'c1, 'a2 * 'b2 * 'c2) CSig.eq option
   val repr : ('a, 'b, 'c) tag -> string
   type any = Any : ('a, 'b, 'c) tag -> any

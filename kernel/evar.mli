@@ -13,7 +13,7 @@
     to keep track of such casts, one has to use the provided {!unsafe_of_int}
     function. *)
 
-type t
+type t = int
 (** Type of existential variables. *)
 
 val repr : t -> int

@@ -84,6 +84,26 @@ module State = struct
 
 end
 
+
+let contains s1 s2 =
+  let re = Str.regexp_string s2 in
+  try
+    ignore (Str.search_forward re s1 0); true
+  with Not_found -> false
+
+
+let rec get_vernac_expr = function
+  | VernacExpr (_, expr) -> expr
+  | VernacTime (_, {CAst.v})
+  | VernacRedirect (_, {CAst.v})
+  | VernacTimeout (_, v)
+  | VernacFail v -> get_vernac_expr v
+
+
+exception AbandonProof of string
+exception FatalError
+
+
 let interp_vernac ~time ~check ~interactive ~state ({CAst.loc;_} as com) =
   let open State in
     try
@@ -126,11 +146,33 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
   (* For beautify, list of parsed sids *)
   let rids    = ref [] in
   let open State in
+
+  let open Printer in
+  let file_meta = (Filename.remove_extension file) ^ ".meta" in
+  let abspath_meta = if Filename.is_relative file_meta then
+    Filename.concat (Sys.getcwd ()) file_meta
+  else
+    file_meta
+  in
+  let out_meta = open_out abspath_meta in
+
   try
+    (* start of the file *)
+    Printf.fprintf out_meta "(**LOAD_PATH** %s **)\n" (string_of_ppcmds (Vernacentries.print_loadpath None));
+    let sigma, env = Pfedit.get_current_context () in
+    let print_segment_context objname obj =
+      match Prettyp.print_object env sigma (objname, obj) with
+      | Some p -> Printf.fprintf out_meta "%s\n\n" (string_of_ppcmds p)
+      | None -> ()
+    in
+    Printf.fprintf out_meta "(**GLOBAL_CONTEXT** %s" "\n";
+    Declaremods.iter_all_segments print_segment_context;
+    Printf.fprintf out_meta "%s **)\n" "";
+
     (* we go out of the following infinite loop when a End_of_input is
      * raised, which means that we raised the end of the file being loaded *)
     while true do
-      let { CAst.loc; _ } as ast =
+      let { CAst.loc; v=cmd } as ast =
           Stm.parse_sentence ~doc:!rstate.doc !rstate.sid in_pa
         (* If an error in parsing occurs, we propagate the exception
            so the caller of load_vernac will take care of it. However,
@@ -150,17 +192,83 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
           iraise (e, info)
        *)
       in
+
+      let () = try
+        Printf.fprintf out_meta "(**START**  **)\n";
+         let ast_str = Vernac2str.string_of_CAst__t Vernac2str.string_of_Vernacexpr__vernac_control ast in
+        Printf.fprintf out_meta "(**AST** %s **)\n" ast_str;
+        let () = match loc with
+        | None -> raise FatalError
+        | Some astloc -> Printf.fprintf out_meta "(**LOC** %s **)\n" (Vernac2str.string_of_Loc__t astloc)
+        in
+        let vernac_expr = get_vernac_expr cmd in
+
+        let () = match vernac_expr with
+        | VernacEndProof Admitted ->
+            raise (AbandonProof "admitted proof")
+        | VernacEndProof (Proved _) ->
+            let sigma, env = Pfedit.get_current_context () in
+            let notations = Notation.pr_visibility (Constrextern.without_symbols (pr_lglob_constr_env env)) None in
+            Printf.fprintf out_meta "(**NOTATIONS** %s **)\n" (string_of_ppcmds notations);
+             let end_tac = Proof_global.get_endline_tactic () in
+            let () = match end_tac with
+            | None -> ()
+            | Some t -> Printf.fprintf out_meta "(**END_TACTIC** %s **)\n" (string_of_ppcmds (Pputils.pr_glb_generic (Global.env ()) t))
+            in
+             let proof_name = Proof_global.get_current_proof_name () in
+            Printf.fprintf out_meta "(**TACTICS_USED** %s **)\n" (string_of_ppcmds (Stm.ShowScript.get_script_pp (Some proof_name)))
+        | _ -> ()
+        in
+
+        (* when a proof is going on *)
+        match Proof_global.give_me_the_proof_opt () with
+        | None -> ()
+        | Some current_proof ->
+            let proof_name = Proof_global.get_current_proof_name () in
+            Printf.fprintf out_meta "(**PROOF_NAME** %s **)\n" proof_name;
+            Printf.fprintf out_meta "(**GOALS** %s **)\n" (string_of_ppcmds (pr_open_subgoals ~proof:current_proof));
+            let sigma, env = Pfedit.get_current_context () in
+            let pprf = Proof.partial_proof current_proof in
+            Printf.fprintf out_meta "(**PROOF_TERM** %s **)\n" (string_of_ppcmds (Pp.prlist_with_sep Pp.fnl (Printer.pr_econstr_env env sigma) pprf));
+
+            (match vernac_expr with
+            (* legal commands inside proofs *)
+            | VernacExactProof ce ->
+                Printf.fprintf out_meta "(**EXACT_PROOF_TERM** %s **)\n" (string_of_ppcmds (Ppconstr.pr_lconstr_expr ce))
+            | VernacFocus _
+            | VernacUnfocus
+            | VernacUnfocused
+            | VernacSubproof _
+            | VernacEndSubproof
+            | VernacBullet _
+            | VernacProof _
+            | VernacEndProof _ -> ()
+            | VernacExtend _ when contains ast_str "VernacSolve" -> ()
+             (* illegal commands inside proofs *)
+            | _-> raise(AbandonProof (Printf.sprintf "illegal vernac command inside a proof %s" ast_str))
+            )
+
+      with
+      | AbandonProof msg -> Printf.fprintf out_meta "(**ABANDON_PROOF** %s **)\n" msg
+      | FatalError -> failwith "FatalError"
+      | _ -> Printf.fprintf out_meta "(**ERROR**  **)\n" in
+
+
+
       (* Printing of vernacs *)
       Option.iter (vernac_echo ?loc) in_echo;
 
       checknav_simple ast;
       let state = Flags.silently (interp_vernac ~time ~check ~interactive ~state:!rstate) ast in
       rids := state.sid :: !rids;
-      rstate := state;
+      Printf.fprintf out_meta "(**END**  **)\n";
+      rstate := state
+
     done;
     input_cleanup ();
     !rstate, !rids, Pcoq.Gram.comment_state in_pa
   with any ->   (* whatever the exception *)
+    close_out out_meta;
     let (e, info) = CErrors.push any in
     input_cleanup ();
     match e with

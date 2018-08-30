@@ -1054,6 +1054,17 @@ let show_script ?proof () =
     msg_notice Pp.(v 0 (prlist_with_sep fnl (fun x -> x) indented_cmds))
   with Vcs_aux.Expired -> ()
 
+
+  let get_script_pp prf =
+    try
+      let cmds = get_script prf in
+      let _,_,_,indented_cmds =
+        List.fold_left indent_script_item ((1,[]),false,[],[]) cmds
+      in
+      let indented_cmds = List.rev (indented_cmds) in
+      Pp.(v 0 (prlist_with_sep fnl (fun x -> x) indented_cmds))
+    with Vcs_aux.Expired -> str ""
+
 end
 
 (* Wrapper for Vernacentries.interp to set the feedback id *)

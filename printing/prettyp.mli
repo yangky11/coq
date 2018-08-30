@@ -16,6 +16,9 @@ open Globnames
 open Misctypes
 open Evd
 
+
+val print_object : env -> Evd.evar_map -> (object_name * Libobject.obj) -> Pp.t option
+
 (** A Pretty-Printer for the Calculus of Inductive Constructions. *)
 
 val assumptions_for_print : Name.t list -> Termops.names_context

@@ -10,6 +10,8 @@
 
 open Misctypes
 
+val print_loadpath : Names.DirPath.t option -> Pp.t
+
 val dump_global : Libnames.reference or_by_notation -> unit
 
 (** Vernacular entries *)

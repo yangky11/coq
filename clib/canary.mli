@@ -8,7 +8,7 @@
 (*         *     (see LICENSE file for the text of the license)         *)
 (************************************************************************)
 
-type t
+type t = Obj.t
 (** Type of canaries. Canaries are used to ensure that an object does not use
     generic operations. *)
 
