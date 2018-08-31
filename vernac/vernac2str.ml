@@ -247,8 +247,24 @@ let string_of_Names__KerPair__t = function
         (string_of_Names__KerName__t knt2)
 
 
+let string_of_Names__MutInd__t = function
+  | Names.MutInd.Same knt ->
+      "Names.MutInd.Same " ^ (string_of_Names__KerName__t knt)
+  | Names.MutInd.Dual (knt1, knt2) ->
+      sprintf "Names.MutInd.Dual (%s, %s)" (string_of_Names__KerName__t knt1)
+        (string_of_Names__KerName__t knt2)
+
+
+let string_of_Names__Constant__t = function
+  | Names.Constant.Same knt ->
+      "Names.Constant.Same " ^ (string_of_Names__KerName__t knt)
+  | Names.Constant.Dual (knt1, knt2) ->
+      sprintf "Names.Constant.Dual (%s, %s)" (string_of_Names__KerName__t knt1)
+        (string_of_Names__KerName__t knt2)
+
+
 let string_of_Names__inductive (mit, i) =
-  sprintf "(%s, %s)" (string_of_Names__KerPair__t mit) (string_of_int i)
+  sprintf "(%s, %s)" (string_of_Names__MutInd__t mit) (string_of_int i)
 
 
 let string_of_Names__constructor (id, i) =
@@ -259,7 +275,7 @@ let string_of_Names__global_reference = function
   | Names.VarRef v ->
       "Names.VarRef " ^ v
   | Names.ConstRef c ->
-      "Names.ConstRef " ^ (string_of_Names__KerPair__t c)
+      "Names.ConstRef " ^ (string_of_Names__Constant__t c)
   | Names.IndRef id ->
       "Names.IndRef " ^ (string_of_Names__inductive id)
   | Names.ConstructRef cons ->
@@ -1279,6 +1295,12 @@ let string_of_Vernacexpr__vernac_expr = function
       sprintf "Vernacexpr.VernacHints (%s, %s)" (string_of_list string_of_string sl)
         (string_of_Vernacexpr__hints_expr he)
 
+  | Vernacexpr.VernacDeclareImplicits (r_obn, ll) ->
+      sprintf "Vernacexpr.VernacDeclareImplicits (%s, %s)" (string_of_Misctypes__or_by_notation string_of_Libnames__reference r_obn)
+       (string_of_list (string_of_list (fun (e, b1, b2) ->
+        sprintf "(%s, %s, %s)" (string_of_Constrexpr__explicitation e) (string_of_bool b1) (string_of_bool b2)
+       )) ll)
+
   | Vernacexpr.VernacSyntacticDefinition (lid, (idl, ce), f) ->
       sprintf "Vernacexpr.VernacSyntacticDefinition (%s, (%s, %s), %s)" (string_of_Names__lident lid)
         (string_of_list string_of_string idl) (string_of_Constrexpr__constr_expr ce)
@@ -1298,6 +1320,10 @@ let string_of_Vernacexpr__vernac_expr = function
             | `ClearScopes             -> "`ClearScopes"
             | `DefaultImplicits        -> "`DefaultImplicits"
             ) l)
+
+  | Vernacexpr.VernacArgumentsScope (r_obn, scol) ->
+      sprintf "VernacArgumentsScope (%s, %s)" (string_of_Misctypes__or_by_notation string_of_Libnames__reference r_obn)
+       (string_of_list (string_of_option (fun s -> s)) scol)
 
   | Vernacexpr.VernacReserve sbl ->
       "Vernacexpr.VernacReserve " ^ (string_of_list string_of_Vernacexpr__simple_binder sbl)
@@ -1361,6 +1387,7 @@ let string_of_Vernacexpr__vernac_expr = function
   | Vernacexpr.VernacRestart -> "Vernacexpr.VernacRestart"
   | Vernacexpr.VernacUndo i -> "Vernacexpr.VernacUndo " ^ (string_of_int i)
   | Vernacexpr.VernacUndoTo i -> "Vernacexpr.VernacUndoTo " ^ (string_of_int i)
+  | Vernacexpr.VernacBacktrack (i1, i2, i3) -> sprintf "Vernacexpr.VernacBacktrack (%d, %d, %d)" i1 i2 i3
   | Vernacexpr.VernacFocus io -> "Vernacexpr.VernacFocus " ^ (string_of_option string_of_int io)
   | Vernacexpr.VernacUnfocus -> "Vernacexpr.VernacUnfocus"
   | Vernacexpr.VernacUnfocused -> "Vernacexpr.VernacUnfocused"
@@ -1376,6 +1403,9 @@ let string_of_Vernacexpr__vernac_expr = function
       (string_of_option string_of_Vernacexpr__section_subset_expr sseo)
 
   | Vernacexpr.VernacProofMode s -> "Vernacexpr.VernacProofMode " ^ (string_of_string s)
+
+  (* Toplevel control *)
+  | Vernacexpr.VernacToplevelControl ex -> "Vernacexpr.VernacToplevelControl " ^ (Printexc.to_string ex)
 
   (* For extension *)
   | Vernacexpr.VernacExtend (en, rgal) ->
