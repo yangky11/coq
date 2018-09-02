@@ -512,13 +512,13 @@ let pr_goal_tag g =
 
 (* display a goal name *)
 let pr_goal_name sigma g =
-  if should_gname() then str " " ++ Pp.surround (pr_existential_key sigma g)
-  else mt ()
+  str " " ++ Pp.surround (pr_existential_key sigma g)
+
 
 let pr_goal_header nme sigma g =
   let (g,sigma) = Goal.V82.nf_evar sigma g in
-  str "subgoal " ++ nme ++ (if should_tag() then pr_goal_tag g else str"")
-  ++ (if should_gname() then str " " ++ Pp.surround (pr_existential_key sigma g) else mt ())  
+  str "subgoal " ++ nme ++ (pr_goal_tag g)
+  ++ (str " " ++ Pp.surround (pr_existential_key sigma g))
 
 (* display the conclusion of a goal *)
 let pr_concl n sigma g =
@@ -526,7 +526,7 @@ let pr_concl n sigma g =
   let env = Goal.V82.env sigma g in
   let pc = pr_goal_concl_style_env env sigma (Goal.V82.concl sigma g) in
   let header = pr_goal_header (int n) sigma g in
-  header ++ str " is:" ++ cut () ++ str" "  ++ pc
+  header ++ str " is: @#$SUBGOAL$#@" ++ cut () ++ str" "  ++ pc
 
 (* display evar type: a context and a type *)
 let pr_evgl_sign sigma evi =
@@ -771,8 +771,8 @@ let default_pr_subgoals ?(pr_first=true)
       v 0 (
 	int ngoals ++ focused_if_needed ++ str(String.plural ngoals "subgoal")
         ++ print_extra
-        ++ str (if (should_gname()) then ", subgoal 1" else "")
-        ++ (if should_tag() then pr_goal_tag g1 else str"")
+        ++ str (", subgoal 1")
+        ++ (pr_goal_tag g1)
         ++ pr_goal_name sigma g1 ++ cut () ++ goals
         ++ (if unfocused=[] then str ""
            else (cut() ++ cut() ++ str "*** Unfocused goals:" ++ cut()
@@ -841,7 +841,7 @@ let pr_open_subgoals ~proof =
   | _ -> 
      let { Evd.it = bgoals ; sigma = bsigma } = Proof.V82.background_subgoals p in
      let bgoals_focused, bgoals_unfocused = List.partition (fun x -> List.mem x goals) bgoals in
-     let unfocused_if_needed = if should_unfoc() then bgoals_unfocused else [] in
+     let unfocused_if_needed = bgoals_unfocused
      pr_subgoals ~pr_first:true None bsigma ~seeds ~shelf ~stack:[] ~unfocused:unfocused_if_needed ~goals:bgoals_focused
   end
 
