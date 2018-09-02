@@ -17,7 +17,7 @@ open Misctypes
 open Evd
 
 
-val print_object : env -> Evd.evar_map -> (object_name * Libobject.obj) -> Pp.t option
+val gallina_print_leaf_entry : env -> Evd.evar_map -> bool -> (object_name * Libobject.obj) -> Pp.t option
 
 (** A Pretty-Printer for the Calculus of Inductive Constructions. *)
 

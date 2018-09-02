@@ -170,10 +170,6 @@ let with_current_proof f =
       pstates := p :: rest;
       ret
 
-let get_endline_tactic () =
-  match !pstates with
-  | [] -> raise NoCurrentProof
-  | p :: rest -> p.endline_tactic
 
 let simple_with_current_proof f = with_current_proof (fun t p -> f t p , ())
 

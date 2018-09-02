@@ -548,7 +548,7 @@ let print_body env evd = function
   | None -> (str"<no body>")
 
 let print_typed_body env evd (val_0,typ) =
-  (print_body env evd val_0 ++ fnl () ++ str "     : " ++ pr_ltype_env env evd typ)
+  (print_body env evd val_0 ++ fnl () ++ str "     #TYPE:# " ++ pr_ltype_env env evd typ)
 
 let print_instance sigma cb =
   if Declareops.constant_is_polymorphic cb then
@@ -605,10 +605,11 @@ let print_constant with_values sep sp udecl =
 	str"*** [ " ++
 	print_basename sp ++ print_instance sigma cb ++ str " : " ++ cut () ++ pr_ltype typ ++
 	str" ]" ++
+
         Printer.pr_constant_universes sigma univs
     | Some (c, ctx) ->
         let c = Vars.subst_instance_constr (Univ.AUContext.instance ctx) c in
-	print_basename sp ++ print_instance sigma cb ++ str sep ++ cut () ++
+	str "#NAME:# " ++ print_basename sp ++ print_instance sigma cb ++ str sep ++ cut () ++
 	(if with_values then print_typed_body env sigma (Some c,typ) else pr_ltype typ)++
         Printer.pr_constant_universes sigma univs)
 
@@ -636,17 +637,17 @@ let gallina_print_leaf_entry env sigma with_values ((sp,kn as oname),lobj) =
       | (_,"VARIABLE") ->
 	  (* Outside sections, VARIABLES still exist but only with universes
              constraints *)
-          (try Some(print_named_decl env sigma (basename sp)) with Not_found -> None)
+          (try Some(str "@#$VARIABLE$#@\n" ++ print_named_decl env sigma (basename sp)) with Not_found -> None)
       | (_,"CONSTANT") ->
-          Some (print_constant with_values sep (Constant.make1 kn) None)
+          Some (str "@#$CONSTANT$#@\n" ++ print_constant with_values sep (Constant.make1 kn) None)
       | (_,"INDUCTIVE") ->
-          Some (gallina_print_inductive (MutInd.make1 kn) None)
+          Some (str "@#$INDUCTIVE$#@\n" ++ gallina_print_inductive (MutInd.make1 kn) None)
       | (_,"MODULE") ->
 	  let (mp,_,l) = KerName.repr kn in
-	    Some (print_module with_values (MPdot (mp,l)))
+	    Some (str "@#$MODULE$#@\n" ++ print_module with_values (MPdot (mp,l)))
       | (_,"MODULE TYPE") ->
 	  let (mp,_,l) = KerName.repr kn in
-	  Some (print_modtype (MPdot (mp,l)))
+	  Some (str "@#$MODULE TYPE$#@\n" ++ print_modtype (MPdot (mp,l)))
       | (_,("AUTOHINT"|"GRAMMAR"|"SYNTAXCONSTANT"|"PPSYNTAX"|"TOKEN"|"CLASS"|
 	    "COERCION"|"REQUIRE"|"END-SECTION"|"STRUCTURE")) -> None
       (* To deal with forgotten cases... *)
@@ -677,87 +678,6 @@ let gallina_print_context env sigma with_values =
     | _ -> mt ()
   in
   prec
-
-
-let print_annotated_typed_body env evd (val_0,typ) =
-  (print_body env evd val_0 ++ fnl () ++ str "     #TYPE:# " ++ pr_ltype_env env evd typ)
-  let print_annotated_constant sep sp udecl =
-  let cb = Global.lookup_constant sp in
-  let val_0 = Global.body_of_constant_body cb in
-  let typ =
-    match cb.const_universes with
-    | Monomorphic_const _ -> cb.const_type
-    | Polymorphic_const univs ->
-      let inst = Univ.AUContext.instance univs in
-      Vars.subst_instance_constr inst cb.const_type
-  in
-  let univs, ulist =
-    let open Entries in
-    let open Univ in
-    let otab = Global.opaque_tables () in
-    match cb.const_body with
-    | Undef _ | Def _ ->
-      begin
-        match cb.const_universes with
-        | Monomorphic_const ctx -> Monomorphic_const_entry ctx, []
-        | Polymorphic_const ctx ->
-          let inst = AUContext.instance ctx in
-          Polymorphic_const_entry (UContext.make (inst, AUContext.instantiate inst ctx)),
-          Array.to_list (Instance.to_array inst)
-      end
-    | OpaqueDef o ->
-      let body_uctxs = Opaqueproof.force_constraints otab o in
-      match cb.const_universes with
-      | Monomorphic_const ctx ->
-        Monomorphic_const_entry (ContextSet.union body_uctxs ctx), []
-      | Polymorphic_const ctx ->
-        assert(ContextSet.is_empty body_uctxs);
-        let inst = AUContext.instance ctx in
-        Polymorphic_const_entry (UContext.make (inst, AUContext.instantiate inst ctx)),
-        Array.to_list (Instance.to_array inst)
-  in
-  let ctx =
-    UState.of_binders
-      (Universes.universe_binders_with_opt_names (ConstRef sp) ulist udecl)
-  in
-  let env = Global.env () and sigma = Evd.from_ctx ctx in
-  let pr_ltype = pr_ltype_env env sigma in
-  hov 0 (pr_polymorphic (Declareops.constant_is_polymorphic cb) ++
-    match val_0 with
-    | None ->
-  str"*** [ " ++
-  print_basename sp ++ print_instance sigma cb ++ str " : " ++ cut () ++ pr_ltype typ ++
-  str" ]" ++
-        Printer.pr_constant_universes sigma univs
-    | Some (c, ctx) ->
-        let c = Vars.subst_instance_constr (Univ.AUContext.instance ctx) c in
-  print_basename sp ++ print_instance sigma cb ++ str sep ++ cut () ++
-  (print_annotated_typed_body env sigma (Some c,typ))++
-        Printer.pr_constant_universes sigma univs)
-
-
-let print_object env sigma ((sp,kn as oname),lobj) =
-  let sep = " = "
-  and tag = object_tag lobj in
-    match (oname,tag) with
-      | (_,"VARIABLE") ->
-    (* Outside sections, VARIABLES still exist but only with universes
-              constraints *)
-          (try Some(str "@#$VARIABLE$#@\n" ++ (print_named_decl env sigma (basename sp))) with Not_found -> None)
-      | (_,"CONSTANT") ->
-          Some (str "@#$CONSTANT$#@\n" ++ (print_annotated_constant sep (Constant.make1 kn) None))
-      | (_,"INDUCTIVE") ->
-          Some (str "@#$INDUCTIVE$#@\n" ++ (gallina_print_inductive (MutInd.make1 kn) None))
-      | (_,"MODULE") ->
-    let (mp,_,l) = KerName.repr kn in
-      Some (str "@#$MODULE$#@\n" ++ (print_module true (MPdot (mp,l))))
-      | (_,"MODULE TYPE") ->
-    let (mp,_,l) = KerName.repr kn in
-    Some (str "@#$MODULE TYPE$#@\n" ++ (print_modtype (MPdot (mp,l))))
-      | (_,("AUTOHINT"|"GRAMMAR"|"SYNTAXCONSTANT"|"PPSYNTAX"|"TOKEN"|"CLASS"|
-      "COERCION"|"REQUIRE"|"END-SECTION"|"STRUCTURE")) -> None
-      (* To deal with forgotten cases... *)
-      | (_,s) -> None
 
 
 let gallina_print_eval red_fun env sigma _ {uj_val=trm;uj_type=typ} =
