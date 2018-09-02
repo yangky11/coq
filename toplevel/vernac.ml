@@ -161,7 +161,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
     Printf.fprintf out_meta "(**LOAD_PATH** %s **)\n" (string_of_ppcmds (Vernacentries.print_loadpath None));
     let sigma, env = Pfedit.get_current_context () in
     let print_segment_context objname obj =
-      match Prettyp.print_object env sigma (objname, obj) with
+      match Prettyp.gallina_print_leaf_entry env sigma true (objname, obj) with
       | Some p -> Printf.fprintf out_meta "%s\n\n" (string_of_ppcmds p)
       | None -> ()
     in
@@ -207,15 +207,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
         | VernacEndProof Admitted ->
             raise (AbandonProof "admitted proof")
         | VernacEndProof (Proved _) ->
-            let sigma, env = Pfedit.get_current_context () in
-            let notations = Notation.pr_visibility (Constrextern.without_symbols (pr_lglob_constr_env env)) None in
-            Printf.fprintf out_meta "(**NOTATIONS** %s **)\n" (string_of_ppcmds notations);
-             let end_tac = Proof_global.get_endline_tactic () in
-            let () = match end_tac with
-            | None -> ()
-            | Some t -> Printf.fprintf out_meta "(**END_TACTIC** %s **)\n" (string_of_ppcmds (Pputils.pr_glb_generic (Global.env ()) t))
-            in
-             let proof_name = Proof_global.get_current_proof_name () in
+            let proof_name = Proof_global.get_current_proof_name () in
             Printf.fprintf out_meta "(**TACTICS_USED** %s **)\n" (string_of_ppcmds (Stm.ShowScript.get_script_pp (Some proof_name)))
         | _ -> ()
         in
@@ -233,8 +225,6 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
 
             (match vernac_expr with
             (* legal commands inside proofs *)
-            | VernacExactProof ce ->
-                Printf.fprintf out_meta "(**EXACT_PROOF_TERM** %s **)\n" (string_of_ppcmds (Ppconstr.pr_lconstr_expr ce))
             | VernacFocus _
             | VernacUnfocus
             | VernacUnfocused
