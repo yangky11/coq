@@ -158,6 +158,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
 
   try
     (* start of the file *)
+    Printf.fprintf out_meta "(**PWD** %s **)\n" (Sys.getcwd ());
     Printf.fprintf out_meta "(**LOAD_PATH** %s **)\n" (string_of_ppcmds (Vernacentries.print_loadpath None));
     let sigma, env = Pfedit.get_current_context () in
     let print_segment_context objname obj =
@@ -193,6 +194,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
        *)
       in
 
+      let vernac_expr = get_vernac_expr cmd in
       let () = try
         Printf.fprintf out_meta "(**START**  **)\n";
          let ast_str = Vernac2str.string_of_CAst__t Vernac2str.string_of_Vernacexpr__vernac_control ast in
@@ -201,7 +203,6 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
         | None -> raise FatalError
         | Some astloc -> Printf.fprintf out_meta "(**LOC** %s **)\n" (Vernac2str.string_of_Loc__t astloc)
         in
-        let vernac_expr = get_vernac_expr cmd in
 
         let () = match vernac_expr with
         | VernacEndProof Admitted ->
@@ -251,7 +252,17 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
       checknav_simple ast;
       let state = Flags.silently (interp_vernac ~time ~check ~interactive ~state:!rstate) ast in
       rids := state.sid :: !rids;
+
+      let () = match vernac_expr with
+        | VernacStartTheoremProof _ -> 
+            let proof_name = Proof_global.get_current_proof_name () in
+            Printf.fprintf out_meta "(**START_THEOREM** %s **)\n" proof_name
+        | VernacEndProof (Proved _) ->
+            Printf.fprintf out_meta "(**END_THEOREM**  **)\n"
+        | _ -> ()
+      in
       Printf.fprintf out_meta "(**END**  **)\n";
+
       rstate := state
 
     done;
