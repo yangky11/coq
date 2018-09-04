@@ -207,9 +207,6 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
         let () = match vernac_expr with
         | VernacEndProof Admitted ->
             raise (AbandonProof "admitted proof")
-        | VernacEndProof (Proved _) ->
-            let proof_name = Proof_global.get_current_proof_name () in
-            Printf.fprintf out_meta "(**TACTICS_USED** %s **)\n" (string_of_ppcmds (Stm.ShowScript.get_script_pp (Some proof_name)))
         | _ -> ()
         in
 
@@ -232,9 +229,10 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
             | VernacSubproof _
             | VernacEndSubproof
             | VernacBullet _
-            | VernacProof _
+            | VernacProof (None, None)
             | VernacEndProof _ -> ()
             | VernacExtend _ when contains ast_str "VernacSolve" -> ()
+            | VernacProof _ -> raise (AbandonProof "irregular VernacProof")
              (* illegal commands inside proofs *)
             | _-> raise(AbandonProof (Printf.sprintf "illegal vernac command inside a proof %s" ast_str))
             )
