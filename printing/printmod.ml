@@ -313,7 +313,7 @@ let nametab_register_modparam mbid mtb =
 let print_body is_impl env mp (l,body) =
   let name = Label.print l in
   hov 2 (match body with
-    | SFBmodule _ -> keyword "Module" ++ spc () ++ name
+    | SFBmodule _ -> keyword "Module" ++ spc () ++ (str " #SUBMODULE_NAME:# ") ++ name
     | SFBmodtype _ -> keyword "Module Type" ++ spc () ++ name
     | SFBconst cb ->
        let ctx = Declareops.constant_polymorphic_context cb in
@@ -327,7 +327,7 @@ let print_body is_impl env mp (l,body) =
       (match cb.const_body with
 	| Def _ -> def "Definition" ++ spc ()
 	| OpaqueDef _ when is_impl -> def "Theorem" ++ spc ()
-	| _ -> def "Parameter" ++ spc ()) ++ name ++
+	| _ -> def "Parameter" ++ spc ()) ++ (str " #SUBCONST_NAME:# ") ++ name ++
       (match env with
 	  | None -> mt ()
 	  | Some env ->
@@ -355,7 +355,7 @@ let print_body is_impl env mp (l,body) =
           | BiFinite -> def "Variant"
           | CoFinite -> def "CoInductive"
         in
-	keyword ++ spc () ++ name)
+	keyword ++ spc () ++  (str " #SUBINDUCTIVE_NAME:# ") ++ name)
 
 let print_struct is_impl env mp struc =
   prlist_with_sep spc (print_body is_impl env mp) struc
