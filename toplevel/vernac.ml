@@ -229,7 +229,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
             | VernacSubproof _
             | VernacEndSubproof
             | VernacBullet _
-            | VernacProof (None, None)
+            | VernacProof (None, _)
             | VernacEndProof _ -> ()
             | VernacExtend _ when contains ast_str "VernacSolve" -> ()
             | VernacProof (Some tac, _) -> 
