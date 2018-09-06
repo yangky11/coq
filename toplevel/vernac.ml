@@ -232,7 +232,9 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
             | VernacProof (None, None)
             | VernacEndProof _ -> ()
             | VernacExtend _ when contains ast_str "VernacSolve" -> ()
-            | VernacProof _ -> raise (AbandonProof "irregular VernacProof")
+            | VernacProof (Some tac, _) -> 
+                Printf.fprintf out_meta "(**END_TACTIC** %s **)\n" 
+                 (string_of_ppcmds (Pputils.pr_raw_generic (Global.env ()) rga))
              (* illegal commands inside proofs *)
             | _-> raise(AbandonProof (Printf.sprintf "illegal vernac command inside a proof %s" ast_str))
             )
@@ -247,7 +249,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
       (* Printing of vernacs *)
       Option.iter (vernac_echo ?loc) in_echo;
 
-      checknav_simple ast;
+
       let state = Flags.silently (interp_vernac ~time ~check ~interactive ~state:!rstate) ast in
       rids := state.sid :: !rids;
 
