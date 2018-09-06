@@ -234,7 +234,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
             | VernacExtend _ when contains ast_str "VernacSolve" -> ()
             | VernacProof (Some tac, _) -> 
                 Printf.fprintf out_meta "(**END_TACTIC** %s **)\n" 
-                 (string_of_ppcmds (Pputils.pr_raw_generic (Global.env ()) rga))
+                 (string_of_ppcmds (Pputils.pr_raw_generic (Global.env ()) tac))
              (* illegal commands inside proofs *)
             | _-> raise(AbandonProof (Printf.sprintf "illegal vernac command inside a proof %s" ast_str))
             )
