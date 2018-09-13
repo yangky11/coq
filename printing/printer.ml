@@ -764,6 +764,9 @@ let default_pr_subgoals ?(pr_first=true)
         ++ (if unfocused=[] then str ""
            else (cut() ++ cut() ++ str "*** Unfocused goals:" ++ cut()
                  ++ pr_rec (List.length rest + 2) unfocused))
+        ++ (if shelf=[] then str ""
+           else (cut() ++ cut() ++ str "*** Shelved goals:" ++ cut()
+                 ++ pr_rec (List.length rest + 2) shelf))
 	++ print_dependent_evars (Some g1) sigma seeds
       )
 

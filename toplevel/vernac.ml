@@ -160,6 +160,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
     (* start of the file *)
     Printf.fprintf out_meta "(**PWD** %s **)\n" (Sys.getcwd ());
     Printf.fprintf out_meta "(**LOAD_PATH** %s **)\n" (string_of_ppcmds (Vernacentries.print_loadpath None));
+    (*
     let sigma, env = Pfedit.get_current_context () in
     let print_segment_context objname obj =
       match Prettyp.gallina_print_leaf_entry env sigma true (objname, obj) with
@@ -169,6 +170,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
     Printf.fprintf out_meta "(**GLOBAL_CONTEXT** %s" "\n";
     Declaremods.iter_all_segments print_segment_context;
     Printf.fprintf out_meta "%s **)\n" "";
+    *)
 
     (* we go out of the following infinite loop when a End_of_input is
      * raised, which means that we raised the end of the file being loaded *)
