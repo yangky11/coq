@@ -197,56 +197,10 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
       in
 
       let vernac_expr = get_vernac_expr cmd in
-      let () = try
-        Printf.fprintf out_meta "(**START**  **)\n";
-         let ast_str = Vernac2str.string_of_CAst__t Vernac2str.string_of_Vernacexpr__vernac_control ast in
-        Printf.fprintf out_meta "(**AST** %s **)\n" ast_str;
-        let () = match loc with
-        | None -> raise FatalError
+      let () = match loc with
+        | None -> failwith "loc missing"
         | Some astloc -> Printf.fprintf out_meta "(**LOC** %s **)\n" (Vernac2str.string_of_Loc__t astloc)
-        in
-
-        let () = match vernac_expr with
-        | VernacEndProof Admitted ->
-            raise (AbandonProof "admitted proof")
-        | _ -> ()
-        in
-
-        (* when a proof is going on *)
-        match Proof_global.give_me_the_proof_opt () with
-        | None -> ()
-        | Some current_proof ->
-            let proof_name = Proof_global.get_current_proof_name () in
-            Printf.fprintf out_meta "(**PROOF_NAME** %s **)\n" proof_name;
-            Printf.fprintf out_meta "(**GOALS** %s **)\n" (string_of_ppcmds (pr_open_subgoals ~proof:current_proof));
-            let sigma, env = Pfedit.get_current_context () in
-            let pprf = Proof.partial_proof current_proof in
-            Printf.fprintf out_meta "(**PROOF_TERM** %s **)\n" (string_of_ppcmds (Pp.prlist_with_sep Pp.fnl (Printer.pr_econstr_env env sigma) pprf));
-
-            (match vernac_expr with
-            (* legal commands inside proofs *)
-            | VernacFocus _
-            | VernacUnfocus
-            | VernacUnfocused
-            | VernacSubproof _
-            | VernacEndSubproof
-            | VernacBullet _
-            | VernacProof (None, _)
-            | VernacEndProof _ -> ()
-            | VernacExtend _ when contains ast_str "VernacSolve" -> ()
-            | VernacProof (Some tac, _) -> 
-                Printf.fprintf out_meta "(**END_TACTIC** %s **)\n" 
-                 (string_of_ppcmds (Pputils.pr_raw_generic (Global.env ()) tac))
-             (* illegal commands inside proofs *)
-            | _-> raise(AbandonProof (Printf.sprintf "illegal vernac command inside a proof %s" ast_str))
-            )
-
-      with
-      | AbandonProof msg -> Printf.fprintf out_meta "(**ABANDON_PROOF** %s **)\n" msg
-      | FatalError -> failwith "FatalError"
-      | _ -> Printf.fprintf out_meta "(**ERROR**  **)\n" in
-
-
+      in
 
       (* Printing of vernacs *)
       Option.iter (vernac_echo ?loc) in_echo;
@@ -254,17 +208,6 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
 
       let state = Flags.silently (interp_vernac ~time ~check ~interactive ~state:!rstate) ast in
       rids := state.sid :: !rids;
-
-      let () = match vernac_expr with
-        | VernacStartTheoremProof _ -> 
-            let proof_name = Proof_global.get_current_proof_name () in
-            Printf.fprintf out_meta "(**START_THEOREM** %s **)\n" proof_name
-        | VernacEndProof (Proved _) ->
-            Printf.fprintf out_meta "(**END_THEOREM**  **)\n"
-        | _ -> ()
-      in
-      Printf.fprintf out_meta "(**END**  **)\n";
-
       rstate := state
 
     done;
