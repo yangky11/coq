@@ -100,10 +100,6 @@ let rec get_vernac_expr = function
   | VernacFail v -> get_vernac_expr v
 
 
-exception AbandonProof of string
-exception FatalError
-
-
 let interp_vernac ~time ~check ~interactive ~state ({CAst.loc;_} as com) =
   let open State in
     try
@@ -147,7 +143,6 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
   let rids    = ref [] in
   let open State in
 
-  let open Printer in
   let file_meta = (Filename.remove_extension file) ^ ".meta" in
   let abspath_meta = if Filename.is_relative file_meta then
     Filename.concat (Sys.getcwd ()) file_meta
@@ -160,6 +155,7 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
     (* start of the file *)
     Printf.fprintf out_meta "(**PWD** %s **)\n" (Sys.getcwd ());
     Printf.fprintf out_meta "(**LOAD_PATH** %s **)\n" (string_of_ppcmds (Vernacentries.print_loadpath None));
+    Printf.fprintf out_meta "(**ML_PATH**  %S **)\n" (string_of_ppcmds (Mltop.print_ml_path ()));
     (*
     let sigma, env = Pfedit.get_current_context () in
     let print_segment_context objname obj =
@@ -196,7 +192,6 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
        *)
       in
 
-      let vernac_expr = get_vernac_expr cmd in
       let () = match loc with
         | None -> failwith "loc missing"
         | Some astloc -> Printf.fprintf out_meta "(**LOC** %s **)\n" (Vernac2str.string_of_Loc__t astloc)
