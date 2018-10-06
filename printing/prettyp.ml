@@ -111,7 +111,6 @@ let pr_impl_name imp = Id.print (name_of_implicit imp)
 let print_impargs_by_name max = function
   | []  -> []
   | impls ->
-     let n = List.length impls in
      [hov 0 (str "Arguments" ++ spc() ++
       prlist_with_sep pr_comma pr_impl_name impls ++ spc() ++
       str "are" ++ str" implicit" ++
@@ -504,13 +503,13 @@ let print_named_def env sigma name body typ =
   let pbody = pr_lconstr_env env sigma body in
   let ptyp = pr_ltype_env env sigma typ in
   let pbody = if Constr.isCast body then surround pbody else pbody in
-  (str "*** [" ++ str name ++ str " " ++
-     hov 0 (str ":=" ++ brk (1,2) ++ pbody ++ spc () ++
-	      str ":" ++ brk (1,2) ++ ptyp) ++
+  (str "#NAME# " ++ str name ++ str " " ++
+     hov 0 (str ":= #TERM# " ++ brk (1,2) ++ pbody ++ spc () ++
+	      str ": #TYPE# " ++ brk (1,2) ++ ptyp) ++
 	   str "]")
 
 let print_named_assum env sigma name typ =
-  str "*** [" ++ str name ++ str " : " ++ pr_ltype_env env sigma typ ++ str "]"
+  str "#NAME# " ++ str name ++ str " : #TYPE# " ++ pr_ltype_env env sigma typ ++ str " #END#"
 
 let gallina_print_named_decl env sigma =
   let open Context.Named.Declaration in
@@ -549,7 +548,7 @@ let print_body env evd = function
   | None -> (str"<no body>")
 
 let print_typed_body env evd (val_0,typ) =
-  (print_body env evd val_0 ++ fnl () ++ str "     #TYPE:# " ++ pr_ltype_env env evd typ)
+  (str " #TERM# " ++ print_body env evd val_0 ++ fnl () ++ str "     #TYPE# " ++ pr_ltype_env env evd typ)
 
 let print_instance sigma cb =
   if Declareops.constant_is_polymorphic cb then
@@ -603,14 +602,13 @@ let print_constant with_values sep sp udecl =
   hov 0 (pr_polymorphic (Declareops.constant_is_polymorphic cb) ++
     match val_0 with
     | None ->
-	str"*** [ " ++
-	print_basename sp ++ print_instance sigma cb ++ str " : " ++ cut () ++ pr_ltype typ ++
-	str" ]" ++
+	str" #NAME# " ++
+	print_basename sp ++ print_instance sigma cb ++ str " : " ++ cut () ++ str " #TYPE# " ++ pr_ltype typ ++
 
         Printer.pr_constant_universes sigma univs
     | Some (c, ctx) ->
         let c = Vars.subst_instance_constr (Univ.AUContext.instance ctx) c in
-	str "#NAME:# " ++ print_basename sp ++ print_instance sigma cb ++ str sep ++ cut () ++
+	str "#NAME# " ++ print_basename sp ++ print_instance sigma cb ++ str sep ++ cut () ++
 	(if with_values then print_typed_body env sigma (Some c,typ) else pr_ltype typ)++
         Printer.pr_constant_universes sigma univs) ++ spc() ++ str "#END#"
 
@@ -638,17 +636,17 @@ let gallina_print_leaf_entry env sigma with_values ((sp,kn as oname),lobj) =
       | (_,"VARIABLE") ->
 	  (* Outside sections, VARIABLES still exist but only with universes
              constraints *)
-          (try Some(str "@#$VARIABLE$#@\n" ++ print_named_decl env sigma (basename sp)) with Not_found -> None)
+          (try Some(str "#CONST# " ++ print_named_decl env sigma (basename sp)) with Not_found -> None)
       | (_,"CONSTANT") ->
-          Some (str "@#$CONSTANT$#@\n" ++ print_constant with_values sep (Constant.make1 kn) None)
+          Some (str "#CONST# " ++ print_constant with_values sep (Constant.make1 kn) None)
       | (_,"INDUCTIVE") ->
-          Some (str "@#$INDUCTIVE$#@\n" ++ gallina_print_inductive (MutInd.make1 kn) None)
+          Some (str "#INDUCTIVE# " ++ gallina_print_inductive (MutInd.make1 kn) None)
       | (_,"MODULE") ->
 	  let (mp,_,l) = KerName.repr kn in
-	    Some (str "@#$MODULE$#@\n" ++ print_module with_values (MPdot (mp,l)))
+	    Some (str "#MODULE# " ++ print_module with_values (MPdot (mp,l)))
       | (_,"MODULE TYPE") ->
 	  let (mp,_,l) = KerName.repr kn in
-	  Some (str "@#$MODULE TYPE$#@\n" ++ print_modtype (MPdot (mp,l)))
+	  Some (str "#MODULE_TYPE# " ++ print_modtype (MPdot (mp,l)))
       | (_,("AUTOHINT"|"GRAMMAR"|"SYNTAXCONSTANT"|"PPSYNTAX"|"TOKEN"|"CLASS"|
 	    "COERCION"|"REQUIRE"|"END-SECTION"|"STRUCTURE")) -> None
       (* To deal with forgotten cases... *)

@@ -109,9 +109,9 @@ let print_one_inductive env sigma mib ((_,i) as ind) =
     else mt ()
   in
   hov 0 (
-    Id.print mip.mind_typename ++ inst ++ brk(1,4) ++ print_params env sigma params ++
+    str" #NAME# " ++ Id.print mip.mind_typename ++ inst ++ brk(1,4) ++ print_params env sigma params ++
     str ": " ++ Printer.pr_lconstr_env envpar sigma arity ++ str " :=") ++
-  brk(0,2) ++ print_constructors envpar sigma mip.mind_consnames cstrtypes
+  brk(0,2) ++ print_constructors envpar sigma mip.mind_consnames cstrtypes ++ str " #END# "
 
 let instantiate_cumulativity_info cumi =
   let open Univ in
@@ -207,8 +207,8 @@ let print_record env mind mib udecl =
     hv 2 (str "{ " ++
       prlist_with_sep (fun () -> str ";" ++ brk(2,0))
         (fun (id,b,c) ->
-          Id.print id ++ str (if b then " : " else " := ") ++
-          Printer.pr_lconstr_env envpar sigma c) fields) ++ str" }" ++
+          str " #NAME# " ++ Id.print id ++ str (if b then " : " else " := ") ++
+          Printer.pr_lconstr_env envpar sigma c) fields) ++ str" }" ++ str " #END# "  ++
     match mib.mind_universes with
     | Monomorphic_ind _ | Polymorphic_ind _ -> str ""
     | Cumulative_ind cumi ->
