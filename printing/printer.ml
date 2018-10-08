@@ -336,7 +336,7 @@ let pr_compacted_decl env sigma decl =
   let pids = prlist_with_sep pr_comma pr_id ids in
   let pt = pr_ltype_env env sigma typ in
   let ptyp = (str" : " ++ pt) in
-  hov 0 (pids ++ (str " #TERM:# ") ++  pbody ++ (str " #TYPE:# ") ++ ptyp ++ (str "\n@#$SEP$#@\n"))
+  hov 0 (pids ++ (str " #TERM# ") ++  pbody ++ (str " #TYPE# ") ++ ptyp ++ (str " #END# "))
 
 let pr_named_decl env sigma decl =
   decl |> CompactedDecl.of_named_decl |> pr_compacted_decl env sigma
@@ -353,8 +353,8 @@ let pr_rel_decl env sigma decl =
 	(str":=" ++ spc () ++ pb ++ spc ()) in
   let ptyp = pr_ltype_env env sigma typ in
   match na with
-  | Anonymous -> hov 0 (str"<>" ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp ++ (str "@#$SEP$#@"))
-  | Name id -> hov 0 (pr_id id ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp ++ (str "@#$SEP$#@"))
+  | Anonymous -> hov 0 (str"<>" ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp ++ (str " #END#"))
+  | Name id -> hov 0 (pr_id id ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp ++ (str " #END#"))
 
 
 (* Prints out an "env" in a nice format.  We print out the

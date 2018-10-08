@@ -130,6 +130,7 @@ let interp_vernac ~time ~check ~interactive ~state ({CAst.loc;_} as com) =
         | Some _ -> info
       end in iraise (reraise, info)
 
+
 (* Load a vernac file. CErrors are annotated with file and location *)
 let load_vernac_core ~time ~echo ~check ~interactive ~state file =
   (* Keep in sync *)
@@ -197,13 +198,54 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
         | Some astloc -> Printf.fprintf out_meta "(**LOC** %s **)\n" (Vernac2str.string_of_Loc__t astloc)
       in
 
+      let vernac_expr = get_vernac_expr cmd in
+      (* when a proof is going on *)
+      let () = match Proof_global.give_me_the_proof_opt () with
+      | None -> ()
+      | Some current_proof ->
+          (* legal commands inside proofs *)
+          (match vernac_expr with
+          | VernacFocus _
+          | VernacUnfocus
+          | VernacUnfocused
+          | VernacSubproof _
+          | VernacEndSubproof
+          | VernacBullet _
+          | VernacProof _
+          | VernacEndProof _ -> ()
+          | VernacExtend ((name, _), _) when name = "VernacSolve" -> ()
+           (* illegal commands inside proofs *)
+          | _-> Printf.fprintf out_meta "(**ABANDON_PROOF**)\n"
+          )
+      in
+
       (* Printing of vernacs *)
       Option.iter (vernac_echo ?loc) in_echo;
 
+      let () = match vernac_expr with
+      | VernacEndProof Admitted ->
+          Printf.fprintf out_meta "(**ABANDON_PROOF**)\n"
+      | VernacEndProof (Proved (_, lido)) ->
+          let proof_name = match lido with
+          | Some lid -> string_of_ppcmds (Ppconstr.pr_lident lid)
+          | None -> Proof_global.get_current_proof_name ()
+          in
+          Printf.fprintf out_meta "(**PROOF_NAME** %s **)\n" proof_name
+      | _ -> ()
+      in
 
       let state = Flags.silently (interp_vernac ~time ~check ~interactive ~state:!rstate) ast in
       rids := state.sid :: !rids;
-      rstate := state
+      rstate := state;
+
+      match vernac_expr with
+      | VernacProof (Some _, _) ->
+          let end_tac = Proof_global.get_endline_tactic () in
+          (match end_tac with
+          | None -> ()
+          | Some t -> Printf.fprintf out_meta "(**END_TACTIC** %s **)\n"
+                        (string_of_ppcmds (Pputils.pr_glb_generic (Global.env ()) t)))
+      | _ -> ()
 
     done;
     input_cleanup ();
