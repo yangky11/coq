@@ -636,7 +636,7 @@ let gallina_print_leaf_entry env sigma with_values ((sp,kn as oname),lobj) =
       | (_,"VARIABLE") ->
 	  (* Outside sections, VARIABLES still exist but only with universes
              constraints *)
-          (try Some(str "#CONST# " ++ print_named_decl env sigma (basename sp)) with Not_found -> None)
+          (try Some(str "#VARIABLE# " ++ print_named_decl env sigma (basename sp)) with Not_found -> None)
       | (_,"CONSTANT") ->
           Some (str "#CONST# " ++ print_constant with_values sep (Constant.make1 kn) None)
       | (_,"INDUCTIVE") ->

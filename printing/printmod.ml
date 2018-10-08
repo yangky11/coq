@@ -324,7 +324,7 @@ let print_body is_impl env mp (l,body) =
        in
        let ctx = Univ.UContext.make (u, Univ.AUContext.instantiate u ctx) in
        let sigma = Evd.empty in
-      str "#CONST# " ++  
+      str "#CONSTANT# " ++
       (match cb.const_body with
 	| Def _ -> def "Definition" ++ spc ()
 	| OpaqueDef _ when is_impl -> def "Theorem" ++ spc ()
