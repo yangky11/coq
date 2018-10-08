@@ -1062,7 +1062,7 @@ let show_script ?proof () =
         List.fold_left indent_script_item ((1,[]),false,[],[]) cmds
       in
       let indented_cmds = List.rev (indented_cmds) in
-      Pp.(v 0 (prlist_with_sep (fun () -> str "\n@#$SEP@#$\n") (fun x -> x) indented_cmds))
+      Pp.(v 0 (prlist_with_sep (fun () -> str " #END# ") (fun x -> x) indented_cmds))
     with Vcs_aux.Expired -> str ""
 
 end
