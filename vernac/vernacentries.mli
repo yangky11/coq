@@ -10,6 +10,7 @@
 
 open Misctypes
 
+val print_located_library : Libnames.reference -> Pp.t
 val print_loadpath : Names.DirPath.t option -> Pp.t
 
 val dump_global : Libnames.reference or_by_notation -> unit

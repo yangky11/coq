@@ -231,6 +231,9 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
           | None -> Proof_global.get_current_proof_name ()
           in
           Printf.fprintf out_meta "(**PROOF_NAME** %s **)\n" proof_name
+      | VernacRequire (_, _, qidl) ->
+          List.iter (fun qid -> Printf.fprintf out_meta "(**LOCATED_LIBRARY** %s **)\n"
+           (string_of_ppcmds (Vernacentries.print_located_library qid))) qidl
       | _ -> ()
       in
 
