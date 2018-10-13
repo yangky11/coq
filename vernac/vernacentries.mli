@@ -10,6 +10,8 @@
 
 open Misctypes
 
+val expand : string -> string
+val locate_required_libs : Libnames.reference option -> Libnames.reference list -> (Names.DirPath.t * CUnix.physical_path) list
 val print_located_library : Libnames.reference -> Pp.t
 val print_loadpath : Names.DirPath.t option -> Pp.t
 

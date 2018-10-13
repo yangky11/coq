@@ -8,6 +8,8 @@
 (*         *     (see LICENSE file for the text of the license)         *)
 (************************************************************************)
 
+val file_of_name : string -> string
+
 (** {5 Toplevel management} *)
 
 (** If there is a toplevel under Coq, it is described by the following

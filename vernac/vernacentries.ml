@@ -210,7 +210,7 @@ let print_modtype r =
       user_err (str"Unknown Module Type or Module " ++ pr_qualid qid.v)
 
 let print_namespace ns =
-  let ns = List.rev (Names.DirPath.repr ns) in
+  let ns = List.rev (DirPath.repr ns) in
   (* [match_dirpath], [match_modulpath] are helpers for [matches]
      which checks whether a constant is in the namespace [ns]. *)
   let rec match_dirpath ns = function
@@ -812,7 +812,8 @@ let warn_require_in_section =
   CWarnings.create ~name ~category
     (fun () -> strbrk "Use of “Require” inside a section is deprecated.")
 
-let vernac_require from import qidl =
+
+let locate_required_libs from qidl =
   if Lib.sections_are_opened () then warn_require_in_section ();
   let qidl = List.map qualid_of_reference qidl in
   let root = match from with
@@ -828,10 +829,14 @@ let vernac_require from import qidl =
       let (_, dir, f) = Library.locate_qualified_library ?root ~warn qid in
       (dir, f)
     with
-      | Library.LibUnmappedDir -> err_unmapped_library ?loc ?from:root qid
-      | Library.LibNotFound -> err_notfound_library ?loc ?from:root qid
-  in
-  let modrefl = List.map locate qidl in
+    | Library.LibUnmappedDir -> err_unmapped_library ?loc ?from:root qid
+    | Library.LibNotFound -> err_notfound_library ?loc ?from:root qid
+    in
+  List.map locate qidl
+
+
+let vernac_require from import qidl =
+  let modrefl = locate_required_libs from qidl in
   if Dumpglob.dump () then
     List.iter2 (fun {CAst.loc} dp -> Dumpglob.dump_libref ?loc dp "lib") qidl (List.map fst modrefl);
   Library.require_library_from_dirpath modrefl import
