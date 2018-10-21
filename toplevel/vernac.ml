@@ -199,6 +199,8 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
       in
 
       let vernac_expr = get_vernac_expr cmd in
+      Printf.fprintf out_meta "(**VERNAC_TYPE** %s **)\n" (Vernac2str.vernac_expr_type vernac_expr);
+
       (* when a proof is going on *)
       let () = match Proof_global.give_me_the_proof_opt () with
       | None -> ()
@@ -231,17 +233,6 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
           | None -> Proof_global.get_current_proof_name ()
           in
           Printf.fprintf out_meta "(**PROOF_NAME** %s **)\n" proof_name
-      | VernacLoad (_, fname) ->
-          let fname = Envars.expand_path_macros ~warn:(fun x -> Feedback.msg_warning (str x)) fname in
-          let fname = CUnix.make_suffix fname ".v" in
-          let longfname = Loadpath.locate_file fname in
-          Printf.fprintf out_meta "(**FILE_PATH** %s **)\n" longfname
-      | VernacRequire (ro, _, qidl) ->
-          List.iter (fun (_, physical_path) -> Printf.fprintf out_meta "(**FILE_PATH** %s **)\n" physical_path)
-           (Vernacentries.locate_required_libs ro qidl)
-      | VernacDeclareMLModule fnamel ->
-          List.iter (fun s -> Printf.fprintf out_meta "(**FILE_PATH** %s **)\n"
-           (Mltop.file_of_name (Vernacentries.expand s))) fnamel
       | _ -> ()
       in
 
@@ -256,11 +247,6 @@ let load_vernac_core ~time ~echo ~check ~interactive ~state file =
           | None -> ()
           | Some t -> Printf.fprintf out_meta "(**END_TACTIC** %s **)\n"
                         (string_of_ppcmds (Pputils.pr_glb_generic (Global.env ()) t)))
-      (**
-      | VernacRequire (ro, _, qidl) ->
-          List.iter (fun qid -> Printf.fprintf out_meta "(**LOCATED_LIBRARY** %s **)\n"
-                     (string_of_ppcmds (Vernacentries.print_located_library qid))) qidl
-       **)
       | _ -> ()
 
     done;
