@@ -107,9 +107,9 @@ let print_one_inductive env sigma mib ((_,i) as ind) =
     else mt ()
   in
   hov 0 (
-    Id.print mip.mind_typename ++ inst ++ brk(1,4) ++ print_params env sigma params ++
+    str" #NAME# " ++ Id.print mip.mind_typename ++ inst ++ brk(1,4) ++ print_params env sigma params ++
     str ": " ++ Printer.pr_lconstr_env envpar sigma arity ++ str " :=") ++
-  brk(0,2) ++ print_constructors envpar sigma mip.mind_consnames cstrtypes
+  brk(0,2) ++ print_constructors envpar sigma mip.mind_consnames cstrtypes ++ str " #END# "
 
 let instantiate_cumulativity_info cumi =
   let open Univ in
@@ -205,8 +205,8 @@ let print_record env mind mib udecl =
     hv 2 (str "{ " ++
       prlist_with_sep (fun () -> str ";" ++ brk(2,0))
         (fun (id,b,c) ->
-          Id.print id ++ str (if b then " : " else " := ") ++
-          Printer.pr_lconstr_env envpar sigma c) fields) ++ str" }" ++
+          str " #NAME# " ++ Id.print id ++ str (if b then " : " else " := ") ++
+          Printer.pr_lconstr_env envpar sigma c) fields) ++ str" }" ++ str " #END# "  ++
     match mib.mind_universes with
     | Monomorphic_ind _ | Polymorphic_ind _ -> str ""
     | Cumulative_ind cumi ->
@@ -310,9 +310,9 @@ let nametab_register_modparam mbid mtb =
 
 let print_body is_impl env mp (l,body) =
   let name = Label.print l in
-  hov 2 (match body with
-    | SFBmodule _ -> keyword "Module" ++ spc () ++ name
-    | SFBmodtype _ -> keyword "Module Type" ++ spc () ++ name
+  hov 2 (str "#MODULE_MEMBER# " ++ (match body with
+    | SFBmodule _ -> str "#MODULE# " ++ keyword "Module" ++ spc () ++ str "#NAME# " ++ name
+    | SFBmodtype _ -> str "#MODULE_TYPE# " ++ keyword "Module Type" ++ spc () ++ str "#NAME# " ++ name
     | SFBconst cb ->
        let ctx = Declareops.constant_polymorphic_context cb in
        let u =
@@ -321,26 +321,27 @@ let print_body is_impl env mp (l,body) =
 	 else Univ.Instance.empty
        in
        let ctx = Univ.UContext.make (u, Univ.AUContext.instantiate u ctx) in
-      (match cb.const_body with
+  str "#CONSTANT# " ++   (match cb.const_body with
 	| Def _ -> def "Definition" ++ spc ()
 	| OpaqueDef _ when is_impl -> def "Theorem" ++ spc ()
-	| _ -> def "Parameter" ++ spc ()) ++ name ++
+        | _ -> def "Parameter" ++ spc ()) ++ str "#NAME# " ++ name ++
       (match env with
 	  | None -> mt ()
 	  | Some env ->
-	    str " :" ++ spc () ++
+        str " :" ++ spc () ++ str "#TYPE# " ++
             hov 0 (Printer.pr_ltype_env env (Evd.from_env env)
 		(Vars.subst_instance_constr u
    		  cb.const_type)) ++
 	    (match cb.const_body with
 	      | Def l when is_impl ->
 		spc () ++
-		hov 2 (str ":= " ++
+                hov 2 (str ":= " ++ str "#TERM# " ++
                        Printer.pr_lconstr_env env (Evd.from_env env)
 			  (Vars.subst_instance_constr u (Mod_subst.force_constr l)))
 	      | _ -> mt ()) ++ str "." ++
             Printer.pr_universe_ctx (Evd.from_env env) ctx)
     | SFBmind mib ->
+      str "#INDUCTIVE# " ++ (
       try
 	let env = Option.get env in
         pr_mutual_inductive_body env (MutInd.make2 mp l) mib None
@@ -352,7 +353,7 @@ let print_body is_impl env mp (l,body) =
           | BiFinite -> def "Variant"
           | CoFinite -> def "CoInductive"
         in
-	keyword ++ spc () ++ name)
+  keyword ++ spc () ++ name)))
 
 let print_struct is_impl env mp struc =
   prlist_with_sep spc (print_body is_impl env mp) struc

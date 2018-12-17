@@ -31,9 +31,6 @@ let enable_unfocused_goal_printing = ref false
 let enable_goal_tags_printing = ref false
 let enable_goal_names_printing = ref false
 
-let should_tag() = !enable_goal_tags_printing
-let should_unfoc() = !enable_unfocused_goal_printing
-let should_gname() = !enable_goal_names_printing
 
 
 let _ =
@@ -339,7 +336,7 @@ let pr_compacted_decl env sigma decl =
   let pids = prlist_with_sep pr_comma pr_id ids in
   let pt = pr_ltype_env env sigma typ in
   let ptyp = (str" : " ++ pt) in
-  hov 0 (pids ++ pbody ++ ptyp)
+  hov 0 (pids ++ (str " #TERM# ") ++  pbody ++ (str " #TYPE# ") ++ ptyp ++ (str " #END# "))
 
 let pr_named_decl env sigma decl =
   decl |> CompactedDecl.of_named_decl |> pr_compacted_decl env sigma
@@ -356,8 +353,8 @@ let pr_rel_decl env sigma decl =
 	(str":=" ++ spc () ++ pb ++ spc ()) in
   let ptyp = pr_ltype_env env sigma typ in
   match na with
-  | Anonymous -> hov 0 (str"<>" ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp)
-  | Name id -> hov 0 (pr_id id ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp)
+  | Anonymous -> hov 0 (str"<>" ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp ++ (str " #END#"))
+  | Name id -> hov 0 (pr_id id ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp ++ (str " #END#"))
 
 
 (* Prints out an "env" in a nice format.  We print out the
@@ -517,15 +514,11 @@ let pr_goal_tag g =
   let s = " (ID " ^ Goal.uid g ^ ")" in
   str s
 
-(* display a goal name *)
-let pr_goal_name sigma g =
-  if should_gname() then str " " ++ Pp.surround (pr_existential_key sigma g)
-  else mt ()
 
 let pr_goal_header nme sigma g =
   let (g,sigma) = Goal.V82.nf_evar sigma g in
-  str "subgoal " ++ nme ++ (if should_tag() then pr_goal_tag g else str"")
-  ++ (if should_gname() then str " " ++ Pp.surround (pr_existential_key sigma g) else mt ())
+  str "subgoal " ++ nme ++ (pr_goal_tag g)
+  ++ (str " " ++ Pp.surround (pr_existential_key sigma g))
 
 (* display the conclusion of a goal *)
 let pr_concl n ?(diffs=false) ?og_s sigma g =
@@ -538,7 +531,7 @@ let pr_concl n ?(diffs=false) ?og_s sigma g =
       pr_goal_concl_style_env env sigma (Goal.V82.concl sigma g)
   in
   let header = pr_goal_header (int n) sigma g in
-  header ++ str " is:" ++ cut () ++ str" "  ++ pc
+  header ++ str " is: @#$SUBGOAL$#@" ++ cut () ++ str" "  ++ pc
 
 (* display evar type: a context and a type *)
 let pr_evgl_sign sigma evi =
@@ -764,18 +757,13 @@ let pr_subgoals ?(pr_first=true) ?(diffs=false) ?os_map
     | [] -> (mt ())
     | g::rest ->
        let og_s = get_ogs g in
-       let pc = pr_concl n ~diffs ?og_s sigma g in
+       let header = pr_goal_header (int n) sigma g in
+       let pc = pr_goal ~diffs ?og_s { it = g ; sigma = sigma } in
         let prest = pr_rec (n+1) rest in
-        (cut () ++ pc ++ prest)
+        (cut () ++ header ++ cut () ++ pc ++ prest)
   in
   let print_multiple_goals g l =
-    if pr_first then
-      let og_s = get_ogs g in
-      pr_goal ~diffs ?og_s { it = g ; sigma = sigma }
-      ++ (if l=[] then mt () else cut ())
-      ++ pr_rec 2 l
-    else 
-      pr_rec 1 (g::l)
+    pr_rec 1 (g::l)
   in
   (* Side effect! This has to be made more robust *)
   let () =
@@ -805,12 +793,13 @@ let pr_subgoals ?(pr_first=true) ?(diffs=false) ?os_map
       v 0 (
 	int ngoals ++ focused_if_needed ++ str(String.plural ngoals "subgoal")
         ++ print_extra
-        ++ str (if (should_gname()) then ", subgoal 1" else "")
-        ++ (if should_tag() then pr_goal_tag g1 else str"")
-        ++ pr_goal_name sigma g1 ++ cut () ++ goals
+        ++ cut () ++ goals
         ++ (if unfocused=[] then str ""
            else (cut() ++ cut() ++ str "*** Unfocused goals:" ++ cut()
                  ++ pr_rec (List.length rest + 2) unfocused))
+        ++ (if shelf=[] then str ""
+            else (cut() ++ cut() ++ str "*** Shelved goals:" ++ cut()
+              ++ pr_rec (List.length rest + 2) shelf))
 	++ print_dependent_evars (Some g1) sigma seeds
       )
 
@@ -849,7 +838,7 @@ let pr_open_subgoals_diff ?(quiet=false) ?(diffs=false) ?oproof proof =
   | _ -> 
      let { Evd.it = bgoals ; sigma = bsigma } = Proof.V82.background_subgoals p in
      let bgoals_focused, bgoals_unfocused = List.partition (fun x -> List.mem x goals) bgoals in
-     let unfocused_if_needed = if should_unfoc() then bgoals_unfocused else [] in
+     let unfocused_if_needed = bgoals_unfocused in
      let os_map = match oproof with
        | Some op when diffs ->
          let (_,_,_,_, osigma) = Proof.proof op in

@@ -81,6 +81,13 @@ module State = struct
 
 end
 
+let rec get_vernac_expr = function
+  | VernacExpr (_, expr) -> expr
+  | VernacTime (_, {CAst.v})
+  | VernacRedirect (_, {CAst.v})
+  | VernacTimeout (_, v)
+  | VernacFail v -> get_vernac_expr v
+
 let interp_vernac ~check ~interactive ~state ({CAst.loc;_} as com) =
   let open State in
     try
@@ -126,11 +133,25 @@ let load_vernac_core ~echo ~check ~interactive ~state file =
   (* For beautify, list of parsed sids *)
   let rids    = ref [] in
   let open State in
+
+  let file_meta = (Filename.remove_extension file) ^ ".meta" in
+  let abspath_meta = if Filename.is_relative file_meta then
+    Filename.concat (Sys.getcwd ()) file_meta
+  else
+    file_meta
+  in
+  let out_meta = open_out abspath_meta in
+
   try
+    (* start of the file *)
+    Printf.fprintf out_meta "(**PWD** %s **)\n" (Sys.getcwd ());
+    Printf.fprintf out_meta "(**LOAD_PATH** %s **)\n" (string_of_ppcmds (Vernacentries.print_loadpath None));
+    Printf.fprintf out_meta "(**ML_PATH**  %S **)\n" (string_of_ppcmds (Mltop.print_ml_path ()));
+
     (* we go out of the following infinite loop when a End_of_input is
      * raised, which means that we raised the end of the file being loaded *)
     while true do
-      let { CAst.loc; _ } as ast =
+      let { CAst.loc; v=cmd } as ast =
           Stm.parse_sentence ~doc:!rstate.doc !rstate.sid in_pa
         (* If an error in parsing occurs, we propagate the exception
            so the caller of load_vernac will take care of it. However,
@@ -150,17 +171,68 @@ let load_vernac_core ~echo ~check ~interactive ~state file =
           iraise (e, info)
        *)
       in
+
+      let () = match loc with
+        | None -> failwith "loc missing"
+        | Some astloc -> Printf.fprintf out_meta "(**LOC** %s **)\n" (Vernac2str.string_of_Loc__t astloc)
+      in
+       let vernac_expr = get_vernac_expr cmd in
+      Printf.fprintf out_meta "(**VERNAC_TYPE** %s **)\n" (Vernac2str.vernac_expr_type vernac_expr);
+       (* when a proof is going on *)
+      let () = match Proof_global.give_me_the_proof_opt () with
+      | None -> ()
+      | Some current_proof ->
+          (* legal commands inside proofs *)
+          (match vernac_expr with
+          | VernacFocus _
+          | VernacUnfocus
+          | VernacUnfocused
+          | VernacSubproof _
+          | VernacEndSubproof
+          | VernacBullet _
+          | VernacProof _
+          | VernacEndProof _ -> ()
+          | VernacExtend ((name, _), _) when name = "VernacSolve" -> ()
+           (* illegal commands inside proofs *)
+          | _-> Printf.fprintf out_meta "(**ABANDON_PROOF**)\n"
+          )
+      in
+
       (* Printing of vernacs *)
       Option.iter (vernac_echo ?loc) in_echo;
 
       checknav_simple ast;
+      let () = match vernac_expr with
+      | VernacEndProof Admitted ->
+          Printf.fprintf out_meta "(**ABANDON_PROOF**)\n"
+      | VernacEndProof (Proved (_, lido)) ->
+          let proof_name = match lido with
+          | Some lid -> string_of_ppcmds (Ppconstr.pr_lident lid)
+          | None -> Proof_global.get_current_proof_name ()
+          in
+          Printf.fprintf out_meta "(**PROOF_NAME** %s **)\n" proof_name
+      | _ -> ()
+      in
+
       let state = Flags.silently (interp_vernac ~check ~interactive ~state:!rstate) ast in
       rids := state.sid :: !rids;
       rstate := state;
+
+      match vernac_expr with
+      | VernacProof (Some _, _) ->
+          let end_tac = Proof_global.get_endline_tactic () in
+          (match end_tac with
+          | None -> ()
+          | Some t -> Printf.fprintf out_meta "(**END_TACTIC** %s **)\n"
+                        (string_of_ppcmds (Pputils.pr_glb_generic (Global.env ()) t)))
+      | _ -> ()
+
+
     done;
     input_cleanup ();
     !rstate, !rids, Pcoq.Parsable.comment_state in_pa
   with any ->   (* whatever the exception *)
+    close_out out_meta;
     let (e, info) = CErrors.push any in
     input_cleanup ();
     match e with

@@ -114,9 +114,9 @@ let print_impargs_by_name max = function
   | []  -> []
   | impls ->
      let n = List.length impls in
-     [hov 0 (str (String.plural n "Argument") ++ spc() ++
+     [hov 0 (str "Argument" ++ spc() ++
       prlist_with_sep pr_comma pr_impl_name impls ++ spc() ++
-      str (String.conjugate_verb_to_be n) ++ str" implicit" ++
+      str "are" ++ str" implicit" ++
       (if max then strbrk " and maximally inserted" else mt()))]
 
 let print_one_impargs_list l =
@@ -128,6 +128,7 @@ let print_one_impargs_list l =
 
 let print_impargs_list prefix l =
   let l = extract_impargs_data l in
+  [str "#INFO# #IMPARGS_LIST# "] @
   List.flatten (List.map (fun (cond,imps) ->
     match cond with
     | None ->
@@ -140,7 +141,7 @@ let print_impargs_list prefix l =
 	   (if Int.equal n1 n2 then int_or_no n2 else
 	    if Int.equal n1 0 then str "no more than " ++ int n2
 	    else int n1 ++ str " to " ++ int_or_no n2) ++
-	    str (String.plural n2 " argument") ++ str ":";
+            str " arguments" ++ str ":";
           v 0 (prlist_with_sep cut (fun x -> x)
 	    (if List.exists is_status_implicit imps
 	    then print_one_impargs_list imps
@@ -148,7 +149,7 @@ let print_impargs_list prefix l =
 
 let print_renames_list prefix l =
   if List.is_empty l then [] else
-  [add_colon prefix ++ str "Arguments are renamed to " ++
+  [str "#INFO# #RENAMES_LIST# " ++ add_colon prefix ++ str "Arguments are renamed to " ++
     hv 2 (prlist_with_sep pr_comma (fun x -> x) (List.map Name.print l))]
 
 let need_expansion impl ref =
@@ -175,9 +176,9 @@ let print_impargs ref =
 
 let print_argument_scopes prefix = function
   | [Some sc] ->
-      [add_colon prefix ++ str"Argument scope is [" ++ str sc ++ str"]"]
+      [str "#INFO# #ARGUMENT_SCOPES# " ++ add_colon prefix ++ str"Argument scopes are [" ++ str sc ++ str"]"]
   | l when not (List.for_all Option.is_empty l) ->
-     [add_colon prefix ++ hov 2 (str"Argument scopes are" ++ spc() ++
+      [str "#INFO# #ARGUMENT_SCOPES# " ++ add_colon prefix ++ hov 2 (str"Argument scopes are" ++ spc() ++
       str "[" ++
       pr_sequence (function Some sc -> str sc | None -> str "_") l ++
       str "]")]
@@ -224,7 +225,7 @@ let print_opacity ref =
 (*******************)
 
 let print_if_is_coercion ref =
-  if Classops.coercion_exists ref then [pr_global ref ++ str " is a coercion"] else []
+  if Classops.coercion_exists ref then [str "#INFO# #IF_IS_COERCION# " ++ pr_global ref ++ str " is a coercion"] else []
 
 (*******************)
 (* *)
@@ -233,7 +234,7 @@ let print_polymorphism ref =
   let poly = Global.is_polymorphic ref in
   let template_poly = Global.is_template_polymorphic ref in
   if Flags.is_universe_polymorphism () || poly || template_poly then
-    [ pr_global ref ++ str " is " ++ str
+    [ str "#INFO# #POLYMORPHISM# " ++ pr_global ref ++ str " is " ++ str
       (if poly then "universe polymorphic"
        else if template_poly then
 	 "template universe polymorphic"
@@ -243,7 +244,7 @@ let print_polymorphism ref =
 let print_type_in_type ref =
   let unsafe = Global.is_type_in_type ref in
   if unsafe then
-    [ pr_global ref ++ str " relies on an unsafe universe hierarchy"]
+    [str "#INFO# #TYPE_IN_TYPE# " ++ pr_global ref ++ str " relies on an unsafe universe hierarchy"]
   else []
 
 let print_primitive_record recflag mipv = function
@@ -252,7 +253,7 @@ let print_primitive_record recflag mipv = function
     | CoFinite | Finite -> str" without eta conversion"
     | BiFinite -> str " with eta conversion"
     in
-    [Id.print mipv.(0).mind_typename ++ str" has primitive projections" ++ eta ++ str"."]
+    [str "#INFO# #PRIMITIVE# " ++ Id.print mipv.(0).mind_typename ++ str" has primitive projections" ++ eta ++ str"."]
   | FakeRecord | NotRecord -> []
 
 let print_primitive ref =
@@ -270,7 +271,7 @@ let print_name_infos ref =
   let type_info_for_implicit =
     if need_expansion (select_impargs_size 0 impls) ref then
       (* Need to reduce since implicits are computed with products flattened *)
-      [str "Expanded type for implicit arguments";
+      [str "#INFO# #TYPE_INFO_FOR_IMPLICIT# " ++ str "Expanded type for implicit arguments";
        print_ref true ref None; blankline]
     else
       [] in
@@ -490,8 +491,8 @@ let print_located_qualid ref = print_located_qualid "object" LocAny ref
 (****  Gallina layer                  *****)
 
 let gallina_print_typed_value_in_env env sigma (trm,typ) =
-  (pr_leconstr_env env sigma trm ++ fnl () ++
-     str "     : " ++ pr_letype_env env sigma typ)
+  (str "#TERM#" ++ spc() ++ pr_leconstr_env env sigma trm ++ fnl () ++
+     str "     : " ++ str "#TYPE#" ++ spc() ++ pr_letype_env env sigma typ ++ spc() ++ str "#END#")
 
 (* To be improved; the type should be used to provide the types in the
    abstractions. This should be done recursively inside pr_lconstr, so that
@@ -502,13 +503,13 @@ let print_named_def env sigma name body typ =
   let pbody = pr_lconstr_env env sigma body in
   let ptyp = pr_ltype_env env sigma typ in
   let pbody = if Constr.isCast body then surround pbody else pbody in
-  (str "*** [" ++ str name ++ str " " ++
-     hov 0 (str ":=" ++ brk (1,2) ++ pbody ++ spc () ++
-	      str ":" ++ brk (1,2) ++ ptyp) ++
+  (str "#NAME# " ++ str name ++ str " " ++
+     hov 0 (str ":= #TERM# " ++ brk (1,2) ++ pbody ++ spc () ++
+              str ": #TYPE# " ++ brk (1,2) ++ ptyp) ++
 	   str "]")
 
 let print_named_assum env sigma name typ =
-  str "*** [" ++ str name ++ str " : " ++ pr_ltype_env env sigma typ ++ str "]"
+  str "#NAME# " ++ str name ++ str " : #TYPE# " ++ pr_ltype_env env sigma typ ++ str " #END#"
 
 let gallina_print_named_decl env sigma =
   let open Context.Named.Declaration in
@@ -547,7 +548,7 @@ let print_body env evd = function
   | None -> (str"<no body>")
 
 let print_typed_body env evd (val_0,typ) =
-  (print_body env evd val_0 ++ fnl () ++ str "     : " ++ pr_ltype_env env evd typ)
+  (str " #TERM# " ++ print_body env evd val_0 ++ fnl () ++ str "     #TYPE# " ++ pr_ltype_env env evd typ)
 
 let print_instance sigma cb =
   if Declareops.constant_is_polymorphic cb then
@@ -600,15 +601,14 @@ let print_constant with_values sep sp udecl =
   hov 0 (pr_polymorphic (Declareops.constant_is_polymorphic cb) ++
     match val_0 with
     | None ->
-	str"*** [ " ++
-	print_basename sp ++ print_instance sigma cb ++ str " : " ++ cut () ++ pr_ltype typ ++
-	str" ]" ++
+        str" #NAME# " ++
+        print_basename sp ++ print_instance sigma cb ++ str " : " ++ cut () ++ str " #TYPE# " ++ pr_ltype typ ++
         Printer.pr_constant_universes sigma univs
     | Some (c, ctx) ->
         let c = Vars.subst_instance_constr (Univ.AUContext.instance ctx) c in
-	print_basename sp ++ print_instance sigma cb ++ str sep ++ cut () ++
+  str "#NAME# " ++ print_basename sp ++ print_instance sigma cb ++ str sep ++ cut () ++
 	(if with_values then print_typed_body env sigma (Some c,typ) else pr_ltype typ)++
-        Printer.pr_constant_universes sigma univs)
+    Printer.pr_constant_universes sigma univs) ++ spc() ++ str "#END#"
 
 let gallina_print_constant_with_infos sp udecl =
   print_constant true " = " sp udecl ++
@@ -634,17 +634,17 @@ let gallina_print_leaf_entry env sigma with_values ((sp,kn as oname),lobj) =
       | (_,"VARIABLE") ->
 	  (* Outside sections, VARIABLES still exist but only with universes
              constraints *)
-          (try Some(print_named_decl env sigma (basename sp)) with Not_found -> None)
+          (try Some(str "#VARIABLE# " ++ print_named_decl env sigma (basename sp)) with Not_found -> None)
       | (_,"CONSTANT") ->
-          Some (print_constant with_values sep (Constant.make1 kn) None)
+          Some (str "#CONST# " ++ print_constant with_values sep (Constant.make1 kn) None)
       | (_,"INDUCTIVE") ->
-          Some (gallina_print_inductive (MutInd.make1 kn) None)
+          Some (str "#INDUCTIVE# " ++ gallina_print_inductive (MutInd.make1 kn) None)
       | (_,"MODULE") ->
-	  let (mp,_,l) = KerName.repr kn in
-	    Some (print_module with_values (MPdot (mp,l)))
+                let (mp,_,l) = KerName.repr kn in
+          Some (str "#MODULE# " ++ print_module with_values (MPdot (mp,l)))
       | (_,"MODULE TYPE") ->
-	  let (mp,_,l) = KerName.repr kn in
-	  Some (print_modtype (MPdot (mp,l)))
+                let (mp,_,l) = KerName.repr kn in
+                Some (str "#MODULE_TYPE# " ++ print_modtype (MPdot (mp,l)))
       | (_,("AUTOHINT"|"GRAMMAR"|"SYNTAXCONSTANT"|"PPSYNTAX"|"TOKEN"|"CLASS"|
 	    "COERCION"|"REQUIRE"|"END-SECTION"|"STRUCTURE")) -> None
       (* To deal with forgotten cases... *)
@@ -811,14 +811,14 @@ let maybe_error_reject_univ_decl na udecl =
 let print_any_name env sigma na udecl =
   maybe_error_reject_univ_decl na udecl;
   match na with
-  | Term (ConstRef sp) -> print_constant_with_infos sp udecl
-  | Term (IndRef (sp,_)) -> print_inductive sp udecl
-  | Term (ConstructRef ((sp,_),_)) -> print_inductive sp udecl
-  | Term (VarRef sp) -> print_section_variable env sigma sp
-  | Syntactic kn -> print_syntactic_def env kn
-  | Dir (DirModule { obj_dir; obj_mp; _ } ) -> print_module (printable_body obj_dir) obj_mp
+  | Term (ConstRef sp) -> str "#CONSTANT#" ++ spc() ++ print_constant_with_infos sp udecl
+  | Term (IndRef (sp,_)) -> str "#INDUCTIVE#" ++ spc() ++  print_inductive sp udecl
+  | Term (ConstructRef ((sp,_),_)) -> str "#INDUCTIVE#" ++ spc() ++  print_inductive sp udecl
+  | Term (VarRef sp) -> str "#VARIABLE#" ++ spc() ++ print_section_variable env sigma sp
+  | Syntactic kn -> str "#SYNTACTIC#" ++ spc() ++  print_syntactic_def env kn
+  | Dir (DirModule { obj_dir; obj_mp; _ } ) -> str "#MODULE#" ++ spc() ++ print_module (printable_body obj_dir) obj_mp
   | Dir _ -> mt ()
-  | ModuleType mp -> print_modtype mp
+  | ModuleType mp -> str "#MODULE_TYPE#" ++ spc() ++  print_modtype mp
   | Other (obj, info) -> info.print obj
   | Undefined qid ->
   try  (* Var locale de but, pas var de section... donc pas d'implicits *)
