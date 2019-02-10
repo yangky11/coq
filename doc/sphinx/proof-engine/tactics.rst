@@ -3073,12 +3073,29 @@ the conversion in hypotheses :n:`{+ @ident}`.
    :name: fold
 
    This tactic applies to any goal. The term :n:`@term` is reduced using the
-   ``red`` tactic. Every occurrence of the resulting :n:`@term` in the goal is
-   then replaced by :n:`@term`.
+   :tacn:`red` tactic. Every occurrence of the resulting :n:`@term` in the goal is
+   then replaced by :n:`@term`. This tactic is particularly useful when a fixpoint
+   definition has been wrongfully unfolded, making the goal very hard to read.
+   On the other hand, when an unfolded function applied to its argument has been
+   reduced, the :tacn:`fold` tactic won't do anything.
 
-.. tacv:: fold {+ @term}
+   .. example::
 
-   Equivalent to :n:`fold @term ; ... ; fold @term`.
+      .. coqtop:: all
+
+         Goal ~0=0.
+         unfold not.
+         Fail progress fold not.
+         pattern (0 = 0).
+         fold not.
+
+      .. coqtop:: none
+
+         Abort.
+
+   .. tacv:: fold {+ @term}
+
+      Equivalent to :n:`fold @term ; ... ; fold @term`.
 
 .. tacn:: pattern @term
    :name: pattern
@@ -3154,7 +3171,7 @@ Automation
    :name: auto
 
    This tactic implements a Prolog-like resolution procedure to solve the
-   current goal. It first tries to solve the goal using the assumption
+   current goal. It first tries to solve the goal using the :tacn:`assumption`
    tactic, then it reduces the goal to an atomic one using intros and
    introduces the newly generated hypotheses as hints. Then it looks at
    the list of tactics associated to the head symbol of the goal and
@@ -4370,7 +4387,7 @@ Automating
    distributivity, constant propagation) and comparing syntactically the
    results.
 
-.. tacn:: ring_simplify {+ @term}
+.. tacn:: ring_simplify {* @term}
    :name: ring_simplify
 
    This tactic applies the normalization procedure described above to
@@ -4384,7 +4401,7 @@ the tactic and how to declare new ring structures. All declared field structures
 can be printed with the ``Print Rings`` command.
 
 .. tacn:: field
-          field_simplify {+ @term}
+          field_simplify {* @term}
           field_simplify_eq
    :name: field; field_simplify; field_simplify_eq
 

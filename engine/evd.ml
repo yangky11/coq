@@ -801,6 +801,9 @@ let make_flexible_variable evd ~algebraic u =
   { evd with universes =
       UState.make_flexible_variable evd.universes ~algebraic u }
 
+let make_nonalgebraic_variable evd u =
+  { evd with universes = UState.make_nonalgebraic_variable evd.universes u }
+
 (****************************************)
 (* Operations on constants              *)
 (****************************************)
@@ -1271,13 +1274,7 @@ module MiniEConstr = struct
   let unsafe_eq = Refl
 
   let to_constr ?(abort_on_undefined_evars=true) sigma c =
-    let evar_value =
-      if not abort_on_undefined_evars then fun ev -> safe_evar_value sigma ev
-      else fun ev ->
-        match safe_evar_value sigma ev with
-        | Some _ as v -> v
-        | None -> anomaly ~label:"econstr" Pp.(str "grounding a non evar-free term")
-    in
+    let evar_value ev = safe_evar_value sigma ev in
     UnivSubst.nf_evars_and_universes_opt_subst evar_value (universe_subst sigma) c
 
   let of_named_decl d = d

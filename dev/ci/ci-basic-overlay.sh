@@ -242,8 +242,8 @@
 ########################################################################
 # ext-lib
 ########################################################################
-# Latest commit on master as of Sep 27, 2018
-: "${ext_lib_CI_REF:=a9c138921fb8c2601e64f1a1702a689120d456f3}"
+# Latest commit on master as of Nov 13, 2018
+: "${ext_lib_CI_REF:=e49214f49e467b01b01682ba499441074218672b}"
 : "${ext_lib_CI_GITURL:=https://github.com/coq-ext-lib/coq-ext-lib}"
 : "${ext_lib_CI_ARCHIVEURL:=${ext_lib_CI_GITURL}/archive}"
 
@@ -282,7 +282,7 @@
 ########################################################################
 # aac-tactics
 ########################################################################
-# Latest commit on master as of Oct 8, 2018
-: "${aactactis_CI_REF:=c10636221af6324dfeea89830699dbb7488dfdde}"
+# Latest commit on v8.9 as of Dec 17, 2018
+: "${aactactis_CI_REF:=c469b26e409b1bde6a64546df85226079796dbe7}"
 : "${aactactis_CI_GITURL:=https://github.com/coq-community/aac-tactics}"
 : "${aactactis_CI_ARCHIVEURL:=${aactactis_CI_GITURL}/archive}"
